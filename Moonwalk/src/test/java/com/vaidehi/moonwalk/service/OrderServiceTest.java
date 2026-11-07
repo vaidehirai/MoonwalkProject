@@ -7,6 +7,7 @@ import com.vaidehi.moonwalk.request.OrderRequest;
 import com.vaidehi.moonwalk.response.APIResponse;
 import com.vaidehi.moonwalk.response.ItemResponse;
 import com.vaidehi.moonwalk.response.OrderResponse;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,6 +68,20 @@ class OrderServiceTest {
     }
 
     @Test
+    void createOrder_WhenRepositoryFails_ReturnsInternalServerError() {
+        OrderRequest request = new OrderRequest(101L, new ArrayList<>(List.of(1L)));
+        Item burger = new Item(1L, "Burger", 50, 5);
+        when(itemService.getItemById(1L)).thenReturn(ResponseEntity.ok(createItemResponse(burger)));
+        doThrow(new DataAccessResourceFailureException("database unavailable"))
+                .when(orderRepository).save(any(Order.class));
+
+        ResponseEntity<APIResponse> response = orderService.createOrder(request);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Failed to create order", response.getBody().getMsg());
+    }
+
+    @Test
     void getActiveOrders_WhenNoActiveOrdersExist_ReturnsNotFound() {
         Order expiredOrder = new Order(1L, 1L, LocalTime.now().minusMinutes(5));
         when(orderRepository.findAll()).thenReturn(List.of(expiredOrder));
@@ -88,6 +103,17 @@ class OrderServiceTest {
         assertEquals("Active orders fetched successfully", response.getBody().getMsg());
         assertInstanceOf(OrderResponse.class, response.getBody());
         assertEquals(1, ((OrderResponse) response.getBody()).getAllOrders().size());
+    }
+
+    @Test
+    void getActiveOrders_WhenRepositoryFails_ReturnsInternalServerError() {
+        when(orderRepository.findAll())
+                .thenThrow(new DataAccessResourceFailureException("database unavailable"));
+
+        ResponseEntity<APIResponse> response = orderService.getActiveOrders();
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Failed to fetch active orders", response.getBody().getMsg());
     }
 
     private ItemResponse createItemResponse(Item item) {

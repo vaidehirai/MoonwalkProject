@@ -5,6 +5,7 @@ import com.vaidehi.moonwalk.repository.ItemRepository;
 import com.vaidehi.moonwalk.response.APIResponse;
 import com.vaidehi.moonwalk.response.ItemResponse;
 import com.vaidehi.moonwalk.response.ItemsResponse;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -56,6 +57,16 @@ class ItemServiceTest {
     }
 
     @Test
+    void getItems_WhenRepositoryFails_ReturnsInternalServerError() {
+        when(itemRepository.findAll()).thenThrow(new DataAccessResourceFailureException("database unavailable"));
+
+        ResponseEntity<APIResponse> response = itemService.getItems();
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Failed to fetch items", response.getBody().getMsg());
+    }
+
+    @Test
     void getItemById_WhenItemExists_ReturnsItem() {
         Item item = new Item(1L, "Burger", 50, 10);
         when(itemRepository.findById(1)).thenReturn(Optional.of(item));
@@ -79,6 +90,17 @@ class ItemServiceTest {
     }
 
     @Test
+    void getItemById_WhenRepositoryFails_ReturnsInternalServerError() {
+        when(itemRepository.findById(1))
+                .thenThrow(new DataAccessResourceFailureException("database unavailable"));
+
+        ResponseEntity<APIResponse> response = itemService.getItemById(1L);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Failed to fetch item", response.getBody().getMsg());
+    }
+
+    @Test
     void insertItem_WhenCalled_SavesItemAndReturnsCreated() {
         Item item = new Item(1L, "Burger", 50, 10);
 
@@ -87,5 +109,17 @@ class ItemServiceTest {
         verify(itemRepository).save(item);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals("Item inserted successfully", response.getBody().getMsg());
+    }
+
+    @Test
+    void insertItem_WhenRepositoryFails_ReturnsInternalServerError() {
+        Item item = new Item(null, "Burger", 50, 10);
+        doThrow(new DataAccessResourceFailureException("database unavailable"))
+                .when(itemRepository).save(item);
+
+        ResponseEntity<APIResponse> response = itemService.insertItem(item);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Failed to insert item", response.getBody().getMsg());
     }
 }

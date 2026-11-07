@@ -1,8 +1,6 @@
 package com.vaidehi.moonwalk.service;
 
-import com.vaidehi.moonwalk.entity.Item;
 import com.vaidehi.moonwalk.entity.Order;
-import com.vaidehi.moonwalk.repository.ChefRepository;
 import com.vaidehi.moonwalk.repository.OrderRepository;
 import com.vaidehi.moonwalk.request.OrderRequest;
 import com.vaidehi.moonwalk.response.APIResponse;
@@ -10,6 +8,7 @@ import com.vaidehi.moonwalk.response.ItemResponse;
 import com.vaidehi.moonwalk.response.OrderResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -41,46 +40,56 @@ public class OrderService {
         totalChefs=chefQueues.size();
         removingInactiveOrdersFromChefQueues();
 
-        //Retrieving all items in an order
-        ArrayList<Long> itemsInAnOrder=orderRequest.getItemIds();
+        try {
+            //Retrieving all items in an order
+            ArrayList<Long> itemsInAnOrder=orderRequest.getItemIds();
+            //Considering each item as different orders for different chefs to complete
+            for(int i=0;i<itemsInAnOrder.size();i++){
+                Order order=new Order();
+                order.setOrderId(orderRequest.getOrderId());
+                order.setItemId(itemsInAnOrder.get(i));
+                log.debug("Processing item {} for order {}", itemsInAnOrder.get(i), orderRequest.getOrderId());
+                allotingOrdersToChefAndCalculatingTimeWhenReady(order);
+                orderRepository.save(order);
+            }
 
-        //Considering each item as different orders for different chefs to complete
-        for(int i=0;i<itemsInAnOrder.size();i++){
-            Order order=new Order();
-            order.setOrderId(orderRequest.getOrderId());
-            order.setItemId(itemsInAnOrder.get(i));
-            log.debug("Processing item {} for order {}", itemsInAnOrder.get(i), orderRequest.getOrderId());
-            allotingOrdersToChefAndCalculatingTimeWhenReady(order);
-            orderRepository.save(order);
+            log.info("Order {} created successfully", orderRequest.getOrderId());
+            return ResponseEntity.status(HttpStatus.OK).body(new APIResponse("Order created successfully"));
+        } catch (DataAccessException exception) {
+            log.error("Failed to create order {}", orderRequest.getOrderId(), exception);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new APIResponse("Failed to create order"));
         }
-
-        log.info("Order {} created successfully", orderRequest.getOrderId());
-        return ResponseEntity.status(HttpStatus.OK).body(new APIResponse("Order created successfully"));
     }
 
     public ResponseEntity<APIResponse> getActiveOrders(){
-        log.info("Fetching active orders");
-        List<Order> allOrders= orderRepository.findAll();
+        try {
+            log.info("Fetching active orders");
+            List<Order> allOrders= orderRepository.findAll();
 
-        //Filtering out the active orders i.e the orders whose timeWhenOrderReady is after the current time
-        List<Order> activeOrders=allOrders.stream().filter(order -> order.getTimeWhenOrderReady().isAfter(LocalTime.now())).collect(Collectors.toList());
+            //Filtering out the active orders i.e the orders whose timeWhenOrderReady is after the current time
+            List<Order> activeOrders=allOrders.stream().filter(order -> order.getTimeWhenOrderReady().isAfter(LocalTime.now())).collect(Collectors.toList());
 
-        if(activeOrders.isEmpty()){
-            log.warn("No active orders found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new APIResponse("No active orders"));
-        }
-        else{
-            OrderResponse orderResponse=new OrderResponse();
-            orderResponse.setAllOrders(activeOrders);
-            orderResponse.setMsg("Active orders fetched successfully");
-            log.info("Fetched {} active orders", activeOrders.size());
-            return ResponseEntity.status(HttpStatus.OK).body(orderResponse);
+            if(activeOrders.isEmpty()){
+                log.warn("No active orders found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new APIResponse("No active orders"));
+            }
+            else{
+                OrderResponse orderResponse=new OrderResponse();
+                orderResponse.setAllOrders(activeOrders);
+                orderResponse.setMsg("Active orders fetched successfully");
+                log.info("Fetched {} active orders", activeOrders.size());
+                return ResponseEntity.status(HttpStatus.OK).body(orderResponse);
+            }
+        } catch (DataAccessException exception) {
+            log.error("Failed to fetch active orders", exception);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new APIResponse("Failed to fetch active orders"));
         }
     }
 
 
     private void allotingOrdersToChefAndCalculatingTimeWhenReady(Order order){
-
         //Retrieving the preparation time of the item present in the order
         Long itemId=order.getItemId();
         ResponseEntity<APIResponse> response=itemService.getItemById(itemId);
