@@ -6,6 +6,7 @@ import com.vaidehi.moonwalk.response.APIResponse;
 import com.vaidehi.moonwalk.response.ChefResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
