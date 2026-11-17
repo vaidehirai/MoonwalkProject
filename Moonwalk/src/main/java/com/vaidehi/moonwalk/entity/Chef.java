@@ -15,7 +15,7 @@ public class Chef {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int chefId;
+    private Integer chefId;
     private String chefName;
 
 }

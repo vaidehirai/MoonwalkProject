@@ -3,14 +3,16 @@ package com.vaidehi.moonwalk.service;
 import com.vaidehi.moonwalk.entity.Chef;
 import com.vaidehi.moonwalk.repository.ChefRepository;
 import com.vaidehi.moonwalk.response.APIResponse;
+import com.vaidehi.moonwalk.response.ChefResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class ChefService {
@@ -25,15 +27,40 @@ public class ChefService {
 
     public ResponseEntity<APIResponse> insertChef(Chef chef){
         try {
-            log.info("Inserting chef {}", chef.getChefName());
-            chefRepository.save(chef);
-            OrderService.chefQueues.add(new ArrayDeque<>());
-            log.info("Chef {} inserted and queue initialized successfully", chef.getChefName());
-            return ResponseEntity.status(HttpStatus.OK).body(new APIResponse("Chef inserted successfully"));
+        log.info("Inserting chef {}", chef.getChefName());
+        chefRepository.save(chef);
+        OrderService.chefQueues.add(new ArrayDeque<>());
+        log.info("Chef {} inserted and queue initialized successfully", chef.getChefName());
+        return ResponseEntity.status(HttpStatus.OK).body(new APIResponse("Chef inserted successfully"));
         } catch (DataAccessException exception) {
             log.error("Failed to insert chef {}", chef.getChefName(), exception);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new APIResponse("Failed to insert chef"));
+        }
+    }
+
+    public ResponseEntity<APIResponse> deleteChefById(Integer chefId){
+        log.info("Deleting chef with ID {}", chefId);
+        chefRepository.deleteById(chefId);
+        log.info("Chef with ID {} deleted successfully", chefId);
+        return ResponseEntity.status(HttpStatus.OK).body(new APIResponse("Chef deleted successfully"));
+    }
+
+    public ResponseEntity<APIResponse> getAllChefs(){
+        log.info("Fetching all chefs");
+        List<Chef> chefs=chefRepository.findAll();
+        ArrayList<Chef> allChefs = new ArrayList<>(chefs);
+
+        if(allChefs.isEmpty()){
+            log.warn("No chefs found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new APIResponse("No chefs found"));
+        }
+        else{
+            ChefResponse chefResponse = new ChefResponse();
+            chefResponse.setChefs(allChefs);
+            chefResponse.setMsg("All chefs fetched successfully");
+            log.info("Fetched {} chefs", allChefs.size());
+            return ResponseEntity.status(HttpStatus.OK).body(chefResponse);
         }
     }
 

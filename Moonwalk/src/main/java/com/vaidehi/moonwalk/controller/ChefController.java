@@ -4,9 +4,7 @@ import com.vaidehi.moonwalk.entity.Chef;
 import com.vaidehi.moonwalk.response.APIResponse;
 import com.vaidehi.moonwalk.service.ChefService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/chefs")
@@ -19,7 +17,17 @@ public class ChefController {
     }
 
     @PostMapping("/insert-chef")
-    public ResponseEntity<APIResponse> insertChef(Chef chef){
+    public ResponseEntity<APIResponse> insertChef(@RequestBody Chef chef){
         return chefService.insertChef(chef);
+    }
+
+    @DeleteMapping("/delete-chef/{chefId}")
+    public ResponseEntity<APIResponse> deleteChef(@PathVariable Integer chefId) {
+        return chefService.deleteChefById(chefId);
+    }
+
+    @GetMapping("/get-all-chefs")
+    public ResponseEntity<APIResponse> getAllChefs() {
+        return chefService.getAllChefs();
     }
 }
