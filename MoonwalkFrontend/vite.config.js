@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       "/item": backend,
       "/orders": backend,
-      "/chefs": backend,
+      "^/chefs/": backend,
     },
   },
 });

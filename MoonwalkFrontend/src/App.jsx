@@ -1,23 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { request } from "./api.js";
 
 const ITEMS_ENDPOINT = "/item/get-all-items";
 const ACTIVE_ORDERS_ENDPOINT = "/orders/get-active-orders";
 const CREATE_ORDER_ENDPOINT = "/orders/create-order";
-const CREATE_CHEF_ENDPOINT = "/chefs/insert-chef";
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
-
-async function request(path, options) {
-  const response = await fetch(`${API_BASE_URL}${path}`, options);
-  const body = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const error = new Error(body.msg || `Request failed (${response.status})`);
-    error.status = response.status;
-    throw error;
-  }
-
-  return body;
-}
 
 function getReadyAt(time, now) {
   if (typeof time !== "string") return null;
@@ -58,13 +44,9 @@ function App() {
   const [itemsLoading, setItemsLoading] = useState(true);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [addingChef, setAddingChef] = useState(false);
-  const [chefName, setChefName] = useState("");
   const [itemsError, setItemsError] = useState("");
   const [ordersError, setOrdersError] = useState("");
   const [notice, setNotice] = useState("");
-  const [chefNotice, setChefNotice] = useState("");
-  const [chefError, setChefError] = useState("");
   const [now, setNow] = useState(() => new Date());
   const nextOrderId = useRef(1);
 
@@ -154,30 +136,6 @@ function App() {
     }
   }
 
-  async function submitChef(event) {
-    event.preventDefault();
-    const name = chefName.trim();
-    if (!name || addingChef) return;
-
-    setAddingChef(true);
-    setChefNotice("");
-    setChefError("");
-    try {
-      const body = await request(CREATE_CHEF_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chefName: name }),
-      });
-
-      setChefName("");
-      setChefNotice(body.msg || `${name} was added to the kitchen.`);
-    } catch (error) {
-      setChefError(error.message);
-    } finally {
-      setAddingChef(false);
-    }
-  }
-
   const displayedOrders = activeOrders
     .map((order) => {
       const readyAt = getReadyAt(order.timeWhenOrderReady, now);
@@ -190,11 +148,14 @@ function App() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Moonwalk Kitchen home">
+        <a className="brand" href="/" aria-label="Moonwalk Kitchen home">
           <span className="brand-mark" aria-hidden="true">M</span>
           <span>moonwalk<span className="brand-period">.</span></span>
         </a>
-        <span className="service-status"><span /> Kitchen is open</span>
+        <div className="topbar-actions">
+          <a className="chef-page-link" href="/chefs">Manage chefs <span aria-hidden="true">↗</span></a>
+          <span className="service-status"><span /> Kitchen is open</span>
+        </div>
       </header>
 
       <section className="hero">
@@ -357,33 +318,6 @@ function App() {
             </div>
           )}
           <p className="refresh-note">Order status refreshes automatically.</p>
-          <div className="chef-section">
-            <p className="eyebrow">GROW THE TEAM</p>
-            <h3>Add a chef</h3>
-            <form className="chef-form" onSubmit={submitChef}>
-              <label className="visually-hidden" htmlFor="chef-name">Chef name</label>
-              <input
-                id="chef-name"
-                name="chefName"
-                type="text"
-                autoComplete="name"
-                maxLength={100}
-                placeholder="Enter chef’s name"
-                value={chefName}
-                onChange={(event) => {
-                  setChefName(event.target.value);
-                  setChefError("");
-                  setChefNotice("");
-                }}
-                required
-              />
-              <button className="chef-button" type="submit" disabled={!chefName.trim() || addingChef}>
-                {addingChef ? "Adding…" : "Add chef"}
-              </button>
-            </form>
-            {chefError && <p className="chef-message chef-message-error" role="alert">{chefError}</p>}
-            {chefNotice && <p className="chef-message" role="status">{chefNotice}</p>}
-          </div>
         </aside>
       </div>
 
