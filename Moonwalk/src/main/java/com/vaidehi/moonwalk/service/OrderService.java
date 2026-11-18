@@ -142,5 +142,53 @@ public class OrderService {
 
     }
 
+    public ResponseEntity<APIResponse> getAllOrders(){
+        try {
+            log.info("Fetching all orders");
+            List<Order> allOrders= orderRepository.findAll();
+
+            if(allOrders.isEmpty()){
+                log.warn("No orders found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new APIResponse("No orders found"));
+            }
+            else{
+                OrderResponse orderResponse=new OrderResponse();
+                orderResponse.setAllOrders(allOrders);
+                orderResponse.setMsg("All orders fetched successfully");
+                log.info("Fetched {} orders", allOrders.size());
+                return ResponseEntity.status(HttpStatus.OK).body(orderResponse);
+            }
+        } catch (DataAccessException exception) {
+            log.error("Failed to fetch all orders", exception);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new APIResponse("Failed to fetch all orders"));
+        }
+    }
+
+    public ResponseEntity<APIResponse> totalOrderBill(){
+
+        try {
+            log.info("Calculating total order bill");
+            List<Order> allOrders= orderRepository.findAll();
+
+            if(allOrders.isEmpty()){
+                log.warn("No orders found for bill calculation");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new APIResponse("No orders found for bill calculation"));
+            }
+            else{
+                double totalBill=0.0;
+                for(Order order:allOrders){
+                    Long itemId=order.getItemId();
+                    ResponseEntity<APIResponse> response=itemService.getItemById(itemId);
+                    ItemResponse itemResponse=(ItemResponse)response.getBody();
+                    totalBill+=itemResponse.getItem().getItemValue();
+                }
+                log.info("Total order bill calculated: {}", totalBill);
+                return ResponseEntity.status(HttpStatus.OK).body(new APIResponse("Total order bill: " + totalBill));
+            }
+        } catch (DataAccessException exception) {
+            log.error("Failed to calculate total order bill", exception);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new APIResponse("Failed to calculate total order bill"));
+        }
+    }
 
 }

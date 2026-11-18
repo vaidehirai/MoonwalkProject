@@ -29,4 +29,14 @@ public class OrderController {
     public ResponseEntity<APIResponse> getActiveOrders(){
         return orderService.getActiveOrders();
     }
+
+    @GetMapping("/get-all-orders")
+    public ResponseEntity<APIResponse> getAllOrders(){
+        return orderService.getAllOrders();
+    }
+
+    @GetMapping("/total-order-bill")
+    public ResponseEntity<APIResponse> totalOrderBill(){
+        return orderService.totalOrderBill();
+    }
 }
